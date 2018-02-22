@@ -1,7 +1,7 @@
 //============================================================
-// STUDENT NAME: <your name>
-// MATRIC NO.  : <matric no.>
-// NUS EMAIL   : <your NUS email address>
+// STUDENT NAME: Bai Chuan
+// MATRIC NO.  : A0133948W
+// NUS EMAIL   : a0133948@u.nus.edu
 // COMMENTS TO GRADER:
 // <comments to grader, if any>
 //
@@ -78,7 +78,7 @@ const char ceilingTexFile[] = "images/ceiling.jpg";
 const char brickTexFile[] = "images/brick.jpg";
 const char checkerTexFile[] = "images/checker.png";
 const char spotsTexFile[] = "images/spots.png";
-const char lightTexFile[] = "images/light.png";
+const char starsTexFile[] = "images/stars.jpg";
 
 
 
@@ -112,7 +112,7 @@ GLuint ceilingTexObj;
 GLuint brickTexObj;
 GLuint checkerTexObj;
 GLuint spotsTexObj;
-GLuint lightTexObj;
+GLuint starsTexObj;
 
 // Others.
 bool drawAxes = true;           // Draw world coordinate frame axes iff true.
@@ -126,7 +126,7 @@ void DrawRoom( void );
 void DrawTeapot( void );
 void DrawSphere( void );
 void DrawTable( void );
-
+void DrawCube( void );
 
 
 
@@ -152,7 +152,6 @@ void MakeReflectionImage( void )
     // STEP 6: Read the correct color buffer into the correct texture object.
     //********************************************************
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    double eyePosZ = 2 * 1.2 - eyePos[2];
    
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
@@ -174,14 +173,16 @@ void MakeReflectionImage( void )
         // Up Axis
         1.0, 0.0, 0.0);
 
-    // Set world-space positions of the two lights.
     glLightfv( GL_LIGHT0, GL_POSITION, light0Position );
     glLightfv( GL_LIGHT1, GL_POSITION, light1Position );
 
+	//things will be reflected
     DrawRoom();
     DrawTeapot();
     DrawSphere();
-
+	DrawCube();
+    
+	//read the color buffer into the texture.
     glReadBuffer( GL_BACK );  
     glBindTexture(GL_TEXTURE_2D, reflectionTexObj);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, winWidth, winHeight, 0);
@@ -210,7 +211,6 @@ void MyDisplay( void )
     MakeReflectionImage();
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
     gluPerspective( 45.0, (double)winWidth/winHeight, EYE_MIN_DIST, eyeDistance + SCENE_RADIUS );
@@ -229,7 +229,8 @@ void MyDisplay( void )
     // Draw scene.
     DrawRoom();
     DrawTeapot();
-    //DrawIcosahedron();
+	//task 2: drawCube
+    DrawCube();
     DrawSphere();
     DrawTable();
 
@@ -544,14 +545,14 @@ void SetUpTextureMaps( void )
 
     // This texture object is for the light texture map.
 
-    glGenTextures( 1, &lightTexObj );
-    glBindTexture( GL_TEXTURE_2D, lightTexObj );
+    glGenTextures( 1, &starsTexObj );
+    glBindTexture( GL_TEXTURE_2D, starsTexObj );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
 
-    if ( ReadImageFile( lightTexFile, &imageData, 
+    if ( ReadImageFile( starsTexFile, &imageData, 
                         &imageWidth, &imageHeight, &numComponents ) == 0 ) exit( 1 );
     if ( numComponents != 3 )
     {
@@ -584,7 +585,6 @@ void SetUpTextureMaps( void )
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri( GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-
 }
 
 
@@ -949,18 +949,12 @@ void DrawTable( void )
     // and the underlying diffuse color and lighting on the tabletop must still be visible.
     //********************************************************
     glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
-    glBindTexture( GL_TEXTURE_2D, checkerTexObj );
-    glNormal3f( 0.0, 0.0, 1.0 ); // Normal vector.
+    glBindTexture( GL_TEXTURE_2D, reflectionTexObj );
     SubdivideAndDrawQuad( 24, 24, 0.0, 1.0, TABLETOP_X2, TABLETOP_Y1, TABLETOP_Z,
                                   1.0, 1.0, TABLETOP_X2, TABLETOP_Y2, TABLETOP_Z,
                                   1.0, 0.0, TABLETOP_X1, TABLETOP_Y2, TABLETOP_Z,
                                   0.0, 0.0, TABLETOP_X1, TABLETOP_Y1, TABLETOP_Z);
-                            
-                            
-
-
-
-
+ 
 // Sides.
 
     GLfloat matAmbient2[] = { 0.2, 0.3, 0.4, 1.0 };
@@ -1049,35 +1043,66 @@ void DrawTable( void )
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Draw a texture-mapped Icosahedron.
+// Task 2: Draw a texture-mapped cube.
 /////////////////////////////////////////////////////////////////////////////
 
-void DrawIcosahedron( void )
+void DrawCube( void )
 {
-    double size = 0.45;
+	//cube edge length
+    const float length = 0.3;
 
     GLfloat matAmbient[] = { 0.8, 0.8, 0.8, 1.0 };
     GLfloat matDiffuse[] = { 0.8, 0.8, 0.8, 1.0 };
     GLfloat matSpecular[] = { 1.0, 1.0, 1.0, 1.0 };
     GLfloat matShininess[] = { 128.0 };
+	
     glMaterialfv( GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient );
     glMaterialfv( GL_FRONT_AND_BACK, GL_DIFFUSE, matDiffuse );
     glMaterialfv( GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular );
     glMaterialfv( GL_FRONT_AND_BACK, GL_SHININESS, matShininess );
-
+   
     glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
-    glBindTexture( GL_TEXTURE_2D, lightTexObj );
-
-    glFrontFace( GL_CW ); // Need to do this because the built-in teapot is modelled using clockwise polygon winding.
-    glDisable( GL_CULL_FACE );  // Disable back-face culling.
-
+    glBindTexture( GL_TEXTURE_2D, starsTexObj );
+    
     glPushMatrix();
-    glTranslated( -0.3, -0.9, size * 0.75 + TABLETOP_Z );
-    glRotated( 90.0, 0.0, 0.0, 1.0 );
-    glRotated( 90.0, 1.0, 0.0, 0.0 );
-    glutSolidIcosahedron( size ); // This function also generates texture coordinates on the teapot.
-    glPopMatrix();
+    glTranslated( 0.6, -1.2, length * 1.2 + TABLETOP_Z );
+    
+	//six sides of cube: 
+	//top
+    SubdivideAndDrawQuad( 24, 24, 0.0, 0.0, length, length, length, 
+                                  length, 0.0, -length, length, length, 
+                                  length, length, -length, -length, length, 
+                                  0.0, length, length, -length, length );
 
-    glEnable( GL_CULL_FACE );	// Enable back-face culling.
-    glFrontFace( GL_CCW );		// Go back to counter-clockwise polygon winding.
+
+    //right
+   
+    SubdivideAndDrawQuad( 24, 24, 0.0, 0.0, -length, length, -length, 
+                                  length, 0.0, -length, length, length, 
+                                  length, length, length, length, length, 
+                                  0.0, length, length, length, -length );
+    //left
+   
+    SubdivideAndDrawQuad( 24, 24, 0.0, 0.0, length, -length, -length, 
+                                  length, 0.0, length, -length, length, 
+                                  length, length, -length, -length, length, 
+                                  0.0, length, -length, -length, -length );
+    //front
+  
+    SubdivideAndDrawQuad( 24, 24, 0.0, 0.0, length, length, -length, 
+                                  length, 0.0, length, length, length, 
+                                  length, length, length, -length, length, 
+                                  0.0, length, length, -length, -length );
+    //back
+  
+    SubdivideAndDrawQuad( 24, 24, 0.0, 0.0, -length, -length, -length, 
+                                  length, 0.0, -length, -length, length, 
+                                  length, length, -length, length, length, 
+                                  0.0, length, -length, length, -length );
+    //bottom
+    SubdivideAndDrawQuad( 24, 24, 0.0, 0.0, length, -length, -length, 
+                                  length, 0.0, -length, -length, -length, 
+                                  length, length, -length, length, -length, 
+                                  0.0, length, length, length, -length );
+    glPopMatrix();
 }
